@@ -1,6 +1,7 @@
 #!/usr/bin/env
 import math
 import struct
+import zlib
 
 class NeoPixel:
     def __init__(self, num_px, filename):
@@ -101,7 +102,7 @@ class NeoPixel:
         self.last_buf = self.buf[:]
 
     def push(self):
-        self.fd.write(self.data)
+        self.fd.write(zlib.compress(self.data, 9))
         self.fd.close()
 
     def sleep(self, milliseconds):

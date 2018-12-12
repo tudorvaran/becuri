@@ -1,6 +1,7 @@
 import struct
+import zlib
 
-data = open('generator/pixels.txt', 'rb').read()
+data = zlib.decompress(open('pixels.txt', 'rb').read())
 
 offset = 0
 while True:
