@@ -3,6 +3,7 @@ import cherrypy
 import hashlib
 import os
 import queue
+import random
 import struct
 import threading
 import time
@@ -16,10 +17,13 @@ import board
 comm_sem = threading.Semaphore()
 comm = {
     'running': True,
-    'shutdown': True,
+    'shutdown': False,
+    'main': {
+        'filename': ''
+    },
     'test': {
         'testing': False,
-        'filename': ''
+        'queue': []
     }
 }
 
@@ -30,7 +34,11 @@ class Controller(threading.Thread):
         self.pixels = neopixel.NeoPixel(board.D18, self.npx, brightness=1.0, auto_write=False, pixel_order=neopixel.RGB)
 
         # Main animations variables
-        self.anim_data = zlib.decompress(open(os.path.join(os.getcwd(), 'animations', 'None-9102dc52ecd6d3377fc3e7a7fe535401'), 'rb').read())
+        self.anims = []
+        self.anim_index = 0
+        self.anim_data = b''
+        self.anim_offset = 0
+        self.init_main_animation()
 
         # Testing animations variables
         self.tmp_fd = None
@@ -58,30 +66,56 @@ class Controller(threading.Thread):
             if self.conf['shutdown']:
                 self.anim_shutdown()
                 return
-
-        offset = 0
-        while True:
-            bdata = struct.unpack_from('>I', self.anim_data, offset)[0]
-            cmd = bdata >> 24
-            if bdata == 0xdeadbeef:
-                self.pixels.show()
-            elif cmd == 0xd0:
-                # print('sleep')
-                time.sleep((bdata & 0xffffff) / 1000)
+            
+            if self.conf['test']['testing']:
+                self.run_test_animation()
             else:
-                r = bdata >> 16 & 0xff
-                g = bdata >> 8 & 0xff
-                b = bdata & 0xff
-                if cmd == 0xf0:
-                    # print('pixels.fill((%d, %d, %d))' % (r, g, b))
-                    self.pixels.fill((r, g, b))
-                elif cmd < self.npx:
-                    # print('pixels[%d] = (%d, %d, %d)' % (cmd, r, g, b))
-                    self.pixels[cmd] = (r, g, b)
-            offset += 4
-            # print(offset)
-            if offset >= len(self.anim_data):
-                offset = 0
+                self.run_main_animation()
+
+    def init_main_animation(self):
+        dpath = os.path.join(os.getcwd(), 'animations')
+        self.anims = [f for f in os.listdir(dpath) if os.path.isfile(os.path.join(dpath, f))]
+        if len(self.anims) == 0:
+            raise IndexError
+        random.shuffle(self.anims)
+        self.anim_index = 0
+        print('Loading %s' % os.path.join(dpath, self.anims[self.anim_index]))
+        self.anim_data = zlib.decompress(open(os.path.join(dpath, self.anims[self.anim_index]), 'rb').read())
+        # TODO: only accept valid zlib files
+        self.anim_offset = 0
+
+    def run_main_animation(self):
+        for i in range(100):
+            self.update_lights(self.anim_data, self.anim_offset)
+            self.anim_offset += 4
+            if self.anim_offset >= len(self.anim_data):
+                self.anim_offset = 0
+                self.anim_index += 1
+                if self.anim_index >= len(self.anims):
+                    self.anim_index = 0
+
+    def run_test_animation(self):
+        pass
+
+    def update_lights(self, data, offset):
+        bdata = struct.unpack_from('>I', data, offset)[0]
+        cmd = bdata >> 24
+        if bdata == 0xdeadbeef:
+            # print('commit')
+            self.pixels.show()
+        elif cmd == 0xd0:
+            # print('sleep')
+            time.sleep(1 if (bdata & 0xffffff) > 1000 else (bdata & 0xffffff) / 1000)
+        else:
+            r = bdata >> 16 & 0xff
+            g = bdata >> 8 & 0xff
+            b = bdata & 0xff
+            if cmd == 0xf0:
+                # print('pixels.fill((%d, %d, %d))' % (r, g, b))
+                self.pixels.fill((r, g, b))
+            elif cmd < self.npx:
+                # print('pixels[%d] = (%d, %d, %d)' % (cmd, r, g, b))
+                self.pixels[cmd] = (r, g, b)
 
     def check_updates(self):
         pass
@@ -95,7 +129,7 @@ class Controller(threading.Thread):
             for j in range(i):
                 self.pixels[j] = (0, 255, 0)
             self.pixels.show()
-            time.sleep(0.05)
+            time.sleep(0.02)
         for i in range(self.npx):
             pushpx(i)
         for i in range(self.npx, 0, -1):
@@ -192,6 +226,12 @@ if __name__ == "__main__":
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
     }
-    ctrl = Controller()
-    ctrl.start()
-    cherrypy.quickstart(Site(), '/', config)
+    try:
+        ctrl = Controller()
+        ctrl.start()
+        cherrypy.quickstart(Site(), '/', config)
+    except KeyboardInterrupt:
+        print('Received Keyboard Interrupt')
+        comm_sem.acquire()
+        comm['shutdown'] = True
+        comm_sem.release()
