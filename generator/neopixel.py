@@ -1,4 +1,3 @@
-#!/usr/bin/env
 import math
 import struct
 import zlib
@@ -100,6 +99,7 @@ class NeoPixel:
             raise ValueError("Color tuple size does not match pixel_order.")
         # Commit value
         self.data += struct.pack('>I', (0xF0 << 24) + (r << 16) + (g << 8) + b)
+        self.data += struct.pack('>I', 0xdeadbeef)
         self.last_buf = self.buf[:]
 
     def push(self):
