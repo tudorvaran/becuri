@@ -22,14 +22,7 @@ class Controller(threading.Thread):
 class Site(object):
     @cherrypy.expose
     def index(self):
-        return """
-        Test a configuration:
-        <form action="uploadfile" method="post" enctype="multipart/form-data">
-            filename: <input type="file" name="file" /><br />
-            <input type="hidden" name="mode" value="test" />
-            <input type="submit" />
-        </form>
-        """
+        raise cherrypy.HTTPRedirect('/index.html')
 
     def writefile(self, file, out_dir):
         data = b''
@@ -75,16 +68,24 @@ if __name__ == "__main__":
             'server.socket_port': 8080,
             'server.thread_pool': 8
         },
-        '/': {
+        '/index.html': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': os.path.join(os.getcwd(), 'index.html')
+        },
+        '/script.js': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': os.path.join(os.getcwd(), 'script.js')
+        },
+        '/log': {
+            'tools.staticfile.on': True,
+            'tools.staticfile.filename': os.path.join(os.getcwd(), 'server.log')
+        },
+        '/manage': {
             'tools.auth_digest.on': True,
             'tools.auth_digest.realm': 'Bradut',
             'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain(userpassdict),
             'tools.auth_digest.key': 'randomsecret',
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
-        '/log': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': os.path.join(os.getcwd(), 'server.log')
-        }
     }
     cherrypy.quickstart(Site(), '/', config)
