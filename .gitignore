@@ -1,2 +1,6 @@
 *.pyc
 *.txt
+*.log
+.vscode/
+server/animations
+server/temp
