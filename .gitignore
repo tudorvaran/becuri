@@ -4,3 +4,5 @@
 .vscode/
 server/animations
 server/temp
+server/neopixel.py
+server/board.py

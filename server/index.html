@@ -5,7 +5,11 @@
     </head>
     <body>
         <script src="script.js"></script>
-        
+        <form action="uploadfile" method="POST" enctype="multipart/form-data">
+            Animation: <input type="file" name="file" /><br />
+            <input type="hidden" name="mode" value="animation" />
+            <input type="submit" />
+        </form>
     </body>
 </html>
 
