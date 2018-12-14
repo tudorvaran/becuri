@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Script care genereaza secventa pentru luminat becuri
 """
@@ -6,7 +6,7 @@ Script care genereaza secventa pentru luminat becuri
 import neopixel
 import random
 
-pixels = neopixel.NeoPixel(50, 'pixels.txt')
+pixels = neopixel.NeoPixel(50, 'pixels2.txt')
 
 def wheel(pos):
     # Input a value 0 to 255 to get a color value.
@@ -91,10 +91,10 @@ try:
         # pixels.fill((0, 255, 0))
         # pixels.commit()
         # pixels.sleep(1)
-        # print ('Theater chase animations.')
-        # theater_chase((127, 127, 127))
-        # theater_chase((127, 0, 0))
-        # theater_chase((0, 0, 127))
+        print ('Theater chase animations.')
+        theater_chase((127, 127, 127))
+        theater_chase((127, 0, 0))
+        theater_chase((0, 0, 127))
         print ('Rainbow animations.')
         rainbow()
         rainbow_cycle()
