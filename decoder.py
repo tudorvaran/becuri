@@ -11,11 +11,11 @@ while True:
     g = by >> 8 & 0xff
     b = by & 0xff
     if cmd == 0xF0:
-        print 'pixels.fill((%d, %d, %d))' % (r, g, b)
+        print('pixels.fill((%d, %d, %d))' % (r, g, b))
     elif cmd == 0xD0:
-        print 'pixels.sleep(%d)' % ((r << 16) + (g << 8) + b)
+        print('pixels.sleep(%d)' % ((r << 16) + (g << 8) + b))
     else:
-        print 'pixels[%d] = (%d, %d, %d)' % (cmd, r, g, b)
+        print('pixels[%d] = (%d, %d, %d)' % (cmd, r, g, b))
 
     offset += 4
     if offset >= len(data):
