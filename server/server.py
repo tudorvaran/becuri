@@ -26,12 +26,12 @@ class Site(object):
         Test a configuration:
         <form action="uploadfile" method="post" enctype="multipart/form-data">
             filename: <input type="file" name="file" /><br />
+            <input type="hidden" name="mode" value="test" />
             <input type="submit" />
         </form>
         """
 
-    @cherrypy.expose
-    def uploadfile(self, file):
+    def writefile(self, file, out_dir):
         data = b''
         size = 0
         while True:
@@ -42,10 +42,22 @@ class Site(object):
                 break # TODO: implement error handling
             if not d:
                 break
-        name = '%s-%s' % (cherrypy.request.login, hashlib.md5(data).hexdigest())
-        path = os.path.join(os.getcwd(), 'temp', name)
+        path = os.path.join(os.getcwd(), out_dir, '%s-%s' % (cherrypy.request.login, hashlib.md5(data).hexdigest()))
         with open(path, 'wb') as out:
             out.write(data)
+        return path
+
+    @cherrypy.expose
+    def uploadfile(self, file, mode):
+        path = None
+        if mode == 'test':
+            print('yes')
+            path = self.writefile(file, 'temp')
+        elif mode == 'animation':
+            path = self.writefile(file, 'animations')
+        else:
+            # TODO: error message
+            return
 
     @cherrypy.expose
     def testanimation(self):
