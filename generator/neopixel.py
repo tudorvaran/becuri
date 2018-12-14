@@ -13,7 +13,7 @@ class NeoPixel:
         self.last_buf = self.buf[:]
 
         self.fd = open(self.filename, 'wb')
-        self.data = ''
+        self.data = b''
 
     def __enter__(self):
         return self
@@ -78,6 +78,7 @@ class NeoPixel:
             if r == lr and g == lg and b == lb:
                 continue
             self.data += struct.pack('>I', (p << 24) + (r << 16) + (g << 8) + b)
+        self.data += struct.pack('>I', 0xdeadbeef)
         self.last_buf = self.buf[:]
 
     def fill(self, value):
