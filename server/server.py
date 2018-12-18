@@ -40,7 +40,8 @@ class Controller(threading.Thread):
         self.anim_index = 0
         self.anim_data = b''
         self.anim_offset = 0
-        self.init_main_animation()
+        self.anim_time_remaining = 180.0
+        self.refresh_animation_list()
 
         # Testing animations variables
         self.test_data = b''
@@ -85,35 +86,40 @@ class Controller(threading.Thread):
             else:
                 self.run_main_animation()
 
-    def update_now_playing(self):
-        comm_sem.acquire()
-        global comm
-        comm['main']['playing'] = self.anims[self.anim_index]
-        comm_sem.release()
+    def load_new_animation(self):
+        self.anim_data = zlib.decompress(open(os.path.join(os.getcwd(), 'animations', self.anims[self.anim_index]), 'rb').read())
+        self.anim_offset = 0
+        self.anim_time_remaining = 180.0
 
-    def init_main_animation(self):
+    def refresh_animation_list(self):
         dpath = os.path.join(os.getcwd(), 'animations')
         self.anims = [f for f in os.listdir(dpath) if os.path.isfile(os.path.join(dpath, f))]
         if len(self.anims) == 0:
             raise IndexError
         random.shuffle(self.anims)
-        self.anim_index = 0
-        print('Loading %s' % os.path.join(dpath, self.anims[self.anim_index]))
-        self.anim_data = zlib.decompress(open(os.path.join(dpath, self.anims[self.anim_index]), 'rb').read())
-        # TODO: only accept valid zlib files
-        self.anim_offset = 0
-        self.update_now_playing()
+        self.load_new_animation()
 
     def run_main_animation(self):
+        start = time.time()
         for i in range(100):
             self.update_lights(self.anim_data, self.anim_offset)
             self.anim_offset += 4
-            if self.anim_offset >= len(self.anim_data):
-                self.anim_offset = 0
-                self.anim_index += 1 # TODO: bug: when anim is over it does not load the other animation
-                if self.anim_index >= len(self.anims):
+            if self.anim_offset >= len(self.anim_data): # animation over
+                if self.anim_index < len(self.anims):
+                    self.anim_index += 1
+                else:
                     self.anim_index = 0
-                self.update_now_playing()
+                self.load_new_animation()
+                return
+        delta = time.time() - start
+        if delta > self.anim_time_remaining:
+            self.anim_time_remaining -= delta
+        else:
+            if self.anim_index < len(self.anims):
+                self.anim_index += 1
+            else:
+                self.anim_index = 0
+            self.load_new_animation()
 
     def run_test_animation(self):
         for i in range(100):
