@@ -92,6 +92,7 @@ class Controller(threading.Thread):
                 comm['test']['filename'] = ''
                 self.conf = comm.copy()
                 comm_sem.release()
+                self.anim_test_start()
             
             if self.conf['test']['testing']:
                 self.run_test_animation()
@@ -172,6 +173,7 @@ class Controller(threading.Thread):
         comm_sem.acquire()
         comm['test']['testing'] = False
         comm_sem.release()
+        self.anim_test_stop()
 
 
     def run_test_animation(self):
@@ -247,7 +249,24 @@ class Controller(threading.Thread):
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
 
-# TODO: exista posibilitatea unei erori daca nu e actualizata lista inainte sa stearga cineva o animatie
+    def anim_test_start(self):
+        for i in range(self.npx):
+            self.pixels.fill((0, 0, 0))
+            self.pixels[i] = (0, 255, 0)
+            self.pixels.show()
+            time.sleep(0.01)
+        self.pixels.fill((0, 0, 0))
+        self.pixels.show()
+
+    def anim_test_stop(self):
+        for i in reversed(range(self.npx)):
+            self.pixels.fill((0, 0, 0))
+            self.pixels[i] = (255, 0, 0)
+            self.pixels.show()
+            time.sleep(0.01)
+        self.pixels.fill((0, 0, 0))
+        self.pixels.show()
+
 
 class Site(object):
     def __init__(self):
