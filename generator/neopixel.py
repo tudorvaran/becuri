@@ -42,12 +42,9 @@ class NeoPixel:
     def __setitem__(self, index, value):
         if isinstance(index, slice):
             start, stop, step = index.indices(len(self.buf) // self.bpp)
-            print(start, stop, step)
             length = stop - start
             if step != 0:
                 length = math.ceil(length / step)
-                print(length)
-            print(value)
             if len(value) != length:
                 raise ValueError("Slice and input sequence size do not match.")
             for value_i, index_i in enumerate(range(start, stop, step)):
@@ -111,7 +108,7 @@ class NeoPixel:
         print("Use decoder.py if you want to debug your sequence!")
         print("Sequence length: ~{0} seconds.".format(self.total_sleep / 1000))
         if (self.total_sleep // 1000) > 180:
-            print("Please note that animations playing are capped at 180 seconds!")
+            print("Please note that submitted animations are capped at 180 seconds!")
         self.fd.write(zlib.compress(self.data, 9))
         self.fd.close()
 
