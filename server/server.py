@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import cherrypy
 import hashlib
+import json
 import os
 import queue
 import random
@@ -417,16 +418,13 @@ class Site(object):
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
 if __name__ == "__main__":
-    userpassdict = {'rbasaraba': '1234'}
+    with open('credentials.secret', 'r') as fd:
+        credentials = json.load(fd)
     config = {
         'global': {
             'server.socket_host': '0.0.0.0',
             'server.socket_port': 8080,
             'server.thread_pool': 8
-        },
-        '/script.js': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': os.path.join(os.getcwd(), 'script.js')
         },
         '/log': {
             'tools.staticfile.on': True,
@@ -435,7 +433,7 @@ if __name__ == "__main__":
         '/': {
             'tools.auth_digest.on': True,
             'tools.auth_digest.realm': 'Bradut',
-            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain(userpassdict),
+            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain(credentials),
             'tools.auth_digest.key': 'randomsecret',
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
