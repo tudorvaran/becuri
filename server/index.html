@@ -1,22 +1,39 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Brad jmkr</title>
+        <title>Manage your animations</title>
+        <style> 
+        table {
+                border-collapse: collapse;
+              }
+              
+        table, th, td {
+                border: 1px solid black;
+              }
+        </style>
     </head>
     <body>
-        <script src="script.js"></script>
+        <table style="width:50%">
+            <tr>
+                <th>Name</th>
+                <th>MD5</th>
+                <th>Delete</th>
+            </tr>
+            <tr>
+                <th>snow</th>
+                <th>dsajdsaj</th>
+                <th><form action="deleteanim" method="POST">
+                    <input type="hidden" name="md5" value="dsajdsaj" />
+                    <button type="submit">Delete</button>
+                </form></th>
+            </tr>
+        </table>
         <form action="uploadfile" method="POST" enctype="multipart/form-data">
-            Animation: <input type="file" name="file" /><br />
+            <p>Add new animation:</p>
+            Name: <input type="text" name="name" /><br />
+            <input type="file" name="file" /><br />
             <input type="hidden" name="mode" value="animation" />
-            <input type="submit" />
+            <button type="submit">Submit</button>
         </form>
     </body>
 </html>
-
-Status:
-Test a configuration:
-        <form action="uploadfile" method="post" enctype="multipart/form-data">
-            filename: <input type="file" name="file" /><br />
-            <input type="hidden" name="mode" value="test" />
-            <input type="submit" />
-        </form>

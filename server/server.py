@@ -4,6 +4,7 @@ import hashlib
 import os
 import queue
 import random
+import re
 import struct
 import threading
 import time
@@ -19,11 +20,12 @@ comm = {
     'running': True,
     'shutdown': False,
     'main': {
-        'filename': ''
+        'playing': ''
     },
     'test': {
         'testing': False,
-        'queue': []
+        'username': '',
+        'filename': ''
     }
 }
 
@@ -41,7 +43,8 @@ class Controller(threading.Thread):
         self.init_main_animation()
 
         # Testing animations variables
-        self.tmp_fd = None
+        self.test_data = b''
+        self.test_offset = 0
 
         # Other variables
         self.conf = None
@@ -52,8 +55,8 @@ class Controller(threading.Thread):
 
     def run(self):
         while True:
-            comm_sem.acquire()
             global comm
+            comm_sem.acquire()
             self.conf = comm.copy()
             comm_sem.release()
 
@@ -66,11 +69,27 @@ class Controller(threading.Thread):
             if self.conf['shutdown']:
                 self.anim_shutdown()
                 return
+
+            if self.conf['test']['filename'] != '':
+                # Load test file
+                self.test_data = zlib.decompress(open(os.path.join(os.getcwd(), 'temp', self.conf['test']['filename']), 'rb').read())
+                self.test_offset = 0
+                comm_sem.acquire()
+                comm['test']['testing'] = True
+                comm['test']['filename'] = ''
+                self.conf = comm.copy()
+                comm_sem.release()
             
             if self.conf['test']['testing']:
                 self.run_test_animation()
             else:
                 self.run_main_animation()
+
+    def update_now_playing(self):
+        comm_sem.acquire()
+        global comm
+        comm['main']['playing'] = self.anims[self.anim_index]
+        comm_sem.release()
 
     def init_main_animation(self):
         dpath = os.path.join(os.getcwd(), 'animations')
@@ -83,6 +102,7 @@ class Controller(threading.Thread):
         self.anim_data = zlib.decompress(open(os.path.join(dpath, self.anims[self.anim_index]), 'rb').read())
         # TODO: only accept valid zlib files
         self.anim_offset = 0
+        self.update_now_playing()
 
     def run_main_animation(self):
         for i in range(100):
@@ -90,12 +110,23 @@ class Controller(threading.Thread):
             self.anim_offset += 4
             if self.anim_offset >= len(self.anim_data):
                 self.anim_offset = 0
-                self.anim_index += 1
+                self.anim_index += 1 # TODO: bug: when anim is over it does not load the other animation
                 if self.anim_index >= len(self.anims):
                     self.anim_index = 0
+                self.update_now_playing()
 
     def run_test_animation(self):
-        pass
+        for i in range(100):
+            self.update_lights(self.test_data, self.test_offset)
+            self.test_offset += 4
+            if self.test_offset >= len(self.test_data):
+                # TODO: add exit animation
+                comm_sem.acquire()
+                global comm
+                comm['test']['testing'] = False
+                comm_sem.release()
+                break
+
 
     def update_lights(self, data, offset):
         bdata = struct.unpack_from('>I', data, offset)[0]
@@ -116,9 +147,6 @@ class Controller(threading.Thread):
             elif cmd < self.npx:
                 # print('pixels[%d] = (%d, %d, %d)' % (cmd, r, g, b))
                 self.pixels[cmd] = (r, g, b)
-
-    def check_updates(self):
-        pass
 
     ##############
     # ANIMATIONS #
@@ -159,11 +187,101 @@ class Controller(threading.Thread):
             
 
 class Site(object):
+    def __init__(self):
+        self.files = {}
+
+        self.update_files()
+
+    def update_files(self):
+        dpath = os.path.join(os.getcwd(), 'animations')
+        files = [f for f in os.listdir(dpath) if os.path.isfile(os.path.join(dpath, f))]
+        self.files = {}
+        pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
+        self.files = {}
+        for f in files:
+            p = pattern.findall(f)[0]
+            user = p[0]
+            if user not in self.files:
+                self.files[user] = []
+            md5 = p[1]
+            fname = p[2]
+            self.files[user].append((md5, fname))
+        print(self.files)
+
     @cherrypy.expose
     def index(self):
-        raise cherrypy.HTTPRedirect('/index.html')
+        body = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Manage your animations</title>
+        <style> 
+        table {
+                border-collapse: collapse;
+              }
+              
+        table, th, td {
+                border: 1px solid black;
+              }
+        </style>
+    </head>
+    <body>
+        <table style="width:50%">
+            <tr>
+                <th>Name</th>
+                <th>MD5</th>
+                <th>Delete</th>
+            </tr>
+"""
+        if cherrypy.request.login in self.files:
+            for f in self.files[cherrypy.request.login]:
+                body += """
+            <tr>
+                <th>{0}</th>
+                <th>{1}</th>
+                <th><form action="deleteanim" method="POST">
+                    <input type="hidden" name="md5" value="{1}" />
+                    <button type="submit">Delete</button>
+                </form></th>
+            </tr>
+""".format(f[1], f[0])
 
-    def writefile(self, file, out_dir):
+
+        body += """
+        </table>
+        <form action="uploadfile" method="POST" enctype="multipart/form-data">
+            <p>Add new animation:</p>
+            Name: <input type="text" name="name" /><br />
+            <input type="file" name="file" /><br />
+            <input type="hidden" name="mode" value="animation" />
+            <button type="submit">Submit</button>
+        </form>
+        <form action="uploadfile" method="POST" enctype="multipart/form-data">
+            <p>Test animation:</p>
+            Name: <input type="hidden" name="name" value="test" /><br />
+            <input type="file" name="file" /><br />
+            <input type="hidden" name="mode" value="test" />
+            <button type="submit">Submit</button>
+        </form>
+    </body>
+</html>
+"""
+
+        return body
+        # raise cherrypy.HTTPRedirect('/index')
+
+    @cherrypy.expose
+    def deleteanim(self, md5):
+        name = ''
+        for f in self.files[cherrypy.request.login]:
+            if f[0] == md5:
+                name = '%s-%s-%s' % (cherrypy.request.login, f[0], f[1])
+                break
+        os.remove(os.path.join(os.getcwd(), 'animations', name))
+        self.update_files()
+        raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
+
+    def writefile(self, file, out_dir, animname):
         data = b''
         size = 0
         while True:
@@ -174,29 +292,44 @@ class Site(object):
                 break # TODO: implement error handling
             if not d:
                 break
-        path = os.path.join(os.getcwd(), out_dir, '%s-%s' % (cherrypy.request.login, hashlib.md5(data).hexdigest()))
+        filename = '%s-%s' % (cherrypy.request.login, hashlib.md5(data).hexdigest())
+        path = os.path.join(os.getcwd(), out_dir, filename)
+        if animname != '':
+            path += '-' + animname
         with open(path, 'wb') as out:
             out.write(data)
-        return path
+        self.update_files()
+        return filename
 
     @cherrypy.expose
-    def uploadfile(self, file, mode):
-        path = None
+    def uploadfile(self, name, file, mode):
+        if cherrypy.request.login is None:
+            raise cherrypy.HTTPError(status=403, message='Authenticate first!')
+        if len(name) == 0:
+            return 'Parameter name cannot be empty'
+        for c in name:
+            if c not in '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ':
+                return 'Only alphanumeric and space characters are accepted in parameter name'
         if mode == 'test':
-            path = self.writefile(file, 'temp')
+            global comm
+            comm_sem.acquire()
+            if comm['test']['testing']:
+                return '%s is testing right now...' % comm['test']['username']
+            comm_sem.release()
+            fn = self.writefile(file, 'temp', '')
+            comm_sem.acquire()
+            comm['test']['testing'] = True
+            comm['test']['username'] = cherrypy.request.login
+            comm['test']['filename'] = fn
+            comm_sem.release()
         elif mode == 'animation':
-            path = self.writefile(file, 'animations')
+            if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
+                return "Maximum of 3 files can be updated"
+            self.writefile(file, 'animations', name[:20])
         else:
             # TODO: error message
             return
-
-    @cherrypy.expose
-    def testanimation(self):
-        pass
-
-    @cherrypy.expose
-    def uploadanimation(self):
-        pass
+        raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
 if __name__ == "__main__":
     userpassdict = {'rbasaraba': '1234'}
@@ -206,10 +339,6 @@ if __name__ == "__main__":
             'server.socket_port': 8080,
             'server.thread_pool': 8
         },
-        '/index.html': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': os.path.join(os.getcwd(), 'index.html')
-        },
         '/script.js': {
             'tools.staticfile.on': True,
             'tools.staticfile.filename': os.path.join(os.getcwd(), 'script.js')
@@ -218,7 +347,7 @@ if __name__ == "__main__":
             'tools.staticfile.on': True,
             'tools.staticfile.filename': os.path.join(os.getcwd(), 'server.log')
         },
-        '/manage': {
+        '/': {
             'tools.auth_digest.on': True,
             'tools.auth_digest.realm': 'Bradut',
             'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain(userpassdict),
