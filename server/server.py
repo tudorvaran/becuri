@@ -85,6 +85,7 @@ class Controller(threading.Thread):
                 test_path = os.path.join(os.getcwd(), 'temp', self.conf['test']['filename'])
                 self.test_data = zlib.decompress(open(test_path, 'rb').read())
                 self.test_offset = 0
+                self.test_time_remaining = 60.0
                 os.remove(test_path)
                 comm_sem.acquire()
                 comm['test']['testing'] = True
@@ -393,8 +394,10 @@ class Site(object):
                 return 'Only alphanumeric and space characters are accepted in parameter name'
 
         if mode == 'test':
+            somebody_testing = False
             comm_sem.acquire()
-            somebody_testing = comm['test']['testing']
+            if comm['test']['testing'] or comm['test']['filename'] != '':
+                somebody_testing = True
             comm_sem.release()
             if somebody_testing:
                 return '%s is testing right now...' % comm['test']['username']
