@@ -9,7 +9,7 @@ pentru a ocupa mai putin spatiu.
 
 Pe interfata web fiecare user poate urca maxim 3 secvente. Secventele sunt apoi
 rulate in mod aleator. Exista si posibilitatea testarii unei secvente inainte 
-de a fi urcata pe server. Testarea este limitata la 60 de secunde, iar
+de a fi urcata pe server. Testarea este limitata la 40 de secunde, iar
 secventele principale sunt limitate la 180 de secunde.
 
 README:

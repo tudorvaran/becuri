@@ -46,7 +46,7 @@ class Controller(threading.Thread):
         # Testing animations variables
         self.test_data = b''
         self.test_offset = 0
-        self.test_time_remaining = 60.0
+        self.test_time_remaining = 40.0
 
         # Other variables
         self.conf = None
@@ -85,7 +85,7 @@ class Controller(threading.Thread):
                 test_path = os.path.join(os.getcwd(), 'temp', self.conf['test']['filename'])
                 self.test_data = zlib.decompress(open(test_path, 'rb').read())
                 self.test_offset = 0
-                self.test_time_remaining = 60.0
+                self.test_time_remaining = 40.0
                 os.remove(test_path)
                 comm_sem.acquire()
                 comm['test']['testing'] = True
