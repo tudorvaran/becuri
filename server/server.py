@@ -19,9 +19,8 @@ comm_sem = threading.Semaphore()
 comm = {
     'running': True,
     'shutdown': False,
-    'main': {
-        'playing': ''
-    },
+    'update': False,
+    'playing': '',
     'test': {
         'testing': False,
         'username': '',
@@ -46,6 +45,7 @@ class Controller(threading.Thread):
         # Testing animations variables
         self.test_data = b''
         self.test_offset = 0
+        self.test_time_remaining = 60.0
 
         # Other variables
         self.conf = None
@@ -71,6 +71,12 @@ class Controller(threading.Thread):
                 self.anim_shutdown()
                 return
 
+            if self.conf['update']:
+                self.refresh_animation_list()
+                comm_sem.acquire()
+                comm['update'] = False
+                comm_sem.release()
+
             if self.conf['test']['filename'] != '':
                 # Load test file
                 self.test_data = zlib.decompress(open(os.path.join(os.getcwd(), 'temp', self.conf['test']['filename']), 'rb').read())
@@ -86,10 +92,21 @@ class Controller(threading.Thread):
             else:
                 self.run_main_animation()
 
+    def update_now_playing(self):
+        pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
+        p = pattern.findall(self.anims[self.anim_index])[0]
+        comm_sem.acquire()
+        global comm
+        print('%s by %s' % (p[2], p[0]))
+        comm['playing'] = '%s by %s' % (p[2], p[0])
+        comm_sem.release()
+
     def load_new_animation(self):
+        print(self.anim_index)
         self.anim_data = zlib.decompress(open(os.path.join(os.getcwd(), 'animations', self.anims[self.anim_index]), 'rb').read())
         self.anim_offset = 0
         self.anim_time_remaining = 180.0
+        self.update_now_playing()
 
     def refresh_animation_list(self):
         dpath = os.path.join(os.getcwd(), 'animations')
@@ -97,42 +114,56 @@ class Controller(threading.Thread):
         if len(self.anims) == 0:
             raise IndexError
         random.shuffle(self.anims)
+        self.anim_index = 0
         self.load_new_animation()
 
     def run_main_animation(self):
         start = time.time()
+        print('Running main animation')
         for i in range(100):
             self.update_lights(self.anim_data, self.anim_offset)
             self.anim_offset += 4
             if self.anim_offset >= len(self.anim_data): # animation over
-                if self.anim_index < len(self.anims):
+                if self.anim_index < len(self.anims) - 1:
                     self.anim_index += 1
                 else:
                     self.anim_index = 0
                 self.load_new_animation()
                 return
+        print("Done main animation")
         delta = time.time() - start
-        if delta > self.anim_time_remaining:
+        print(delta, self.anim_time_remaining)
+        if delta < self.anim_time_remaining:
             self.anim_time_remaining -= delta
         else:
-            if self.anim_index < len(self.anims):
+            if self.anim_index < len(self.anims) - 1:
                 self.anim_index += 1
             else:
                 self.anim_index = 0
             self.load_new_animation()
 
     def run_test_animation(self):
+        start = time.time()
+        global comm
+        print("Running test animation")
         for i in range(100):
             self.update_lights(self.test_data, self.test_offset)
             self.test_offset += 4
             if self.test_offset >= len(self.test_data):
                 # TODO: add exit animation
                 comm_sem.acquire()
-                global comm
                 comm['test']['testing'] = False
                 comm_sem.release()
-                break
-
+                return
+        print("Done test animation")
+        delta = time.time() - start
+        print(delta, self.test_time_remaining)
+        if delta < self.test_time_remaining:
+            self.test_time_remaining -= delta
+        else:
+            comm_sem.acquire()
+            comm['test']['testing'] = False
+            comm_sem.release()
 
     def update_lights(self, data, offset):
         bdata = struct.unpack_from('>I', data, offset)[0]
@@ -190,7 +221,7 @@ class Controller(threading.Thread):
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
 
-            
+# TODO: exista posibilitatea unei erori daca nu e actualizata lista inainte sa stearga cineva o animatie
 
 class Site(object):
     def __init__(self):
@@ -216,6 +247,12 @@ class Site(object):
 
     @cherrypy.expose
     def index(self):
+        comm_sem.acquire()
+        if comm['test']['testing']:
+            np = 'TEST ANIMATION by %s' % comm['test']['username']
+        else:
+            np = comm['playing']
+        comm_sem.release()
         body = """
 <!DOCTYPE html>
 <html>
@@ -232,6 +269,11 @@ class Site(object):
         </style>
     </head>
     <body>
+"""
+        body += """
+        <p>Now playing: {0}</p>
+""".format(np)
+        body += """
         <table style="width:50%">
             <tr>
                 <th>Name</th>
@@ -285,6 +327,10 @@ class Site(object):
                 break
         os.remove(os.path.join(os.getcwd(), 'animations', name))
         self.update_files()
+        global comm
+        comm_sem.acquire()
+        comm['update'] = True
+        comm_sem.release()
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
     def writefile(self, file, out_dir, animname):
@@ -332,6 +378,9 @@ class Site(object):
             if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
                 return "Maximum of 3 files can be updated"
             self.writefile(file, 'animations', name[:20])
+            comm_sem.acquire()
+            comm['update'] = True
+            comm_sem.release()
         else:
             # TODO: error message
             return
@@ -341,7 +390,7 @@ if __name__ == "__main__":
     userpassdict = {'rbasaraba': '1234'}
     config = {
         'global': {
-            'server.socket_host': '127.0.0.1',
+            'server.socket_host': '0.0.0.0',
             'server.socket_port': 8080,
             'server.thread_pool': 8
         },
