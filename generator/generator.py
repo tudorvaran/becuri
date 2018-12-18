@@ -1,109 +1,69 @@
 #!/usr/bin/env python3
 """
-Script care genereaza secventa pentru luminat becuri
+Script care genereaza secventa pentru luminat becuri.
+
+Acest script genereaza un fisier care contine OPCODES prin intermediul carora
+se modifica starea ledurilor pe instalatia de pe brad. Fisierul este transmis
+catre brad prin intermediul interfetei web. Fisierul general o sa fie arhivat
+pentru a ocupa mai putin spatiu.
+
+Pe interfata web fiecare user poate urca maxim 3 secvente. Secventele sunt apoi
+rulate in mod aleator. Exista si posibilitatea testarii unei secvente inainte 
+de a fi urcata pe server. Testarea este limitata la 60 de secunde, iar
+secventele principale sunt limitate la 180 de secunde.
+
+README:
+    Clasa NeoPixel returneaza un array de pixeli.
+    Culorile sunt exprimate ca tuple RGB cu valori cuprinse intre 0 si 255.
+    Functii disponibile:
+    - fill((r, g, b))
+        seteaza toti pixelii la culoarea RGB data
+        functia fill face si commit
+    - sleep(milliseconds)
+        destul de descriptiv
+    - commit()
+        trimite starea actuala a pixelilor catre becuri
+    - push()
+        dupa incheierea secventei se apeleaza functia push pentru a scrie
+    datele in fisierul out
+
+Pixelii pot fi adresati si individual:
+    pixels[2] = (r, g, b)
+Aceasta modifica starea lor in array. Pentru a trimite modificarile catre bec
+trebuie sa se faca commit.
+
+Pentru debugging foloseste 'decoder.py'
 """
 
 import neopixel
 import random
+import sys
 
-pixels = neopixel.NeoPixel(50, 'pixels2.txt')
+PIXEL_NUM = 50
 
-def wheel(pos):
-    # Input a value 0 to 255 to get a color value.
-    # The colours are a transition r - g - b - back to r.
-    if pos < 0 or pos > 255:
-        r = g = b = 0
-    elif pos < 85:
-        r = int(pos * 3)
-        g = int(255 - pos*3)
-        b = 0
-    elif pos < 170:
-        pos -= 85
-        r = int(255 - pos*3)
-        g = 0
-        b = int(pos*3)
-    else:
-        pos -= 170
-        r = 0
-        g = int(pos*3)
-        b = int(255 - pos*3)
-    return (r, g, b)
+path = 'animation.txt'
+if len(sys.argv) > 1:
+    path = sys.argv[1]
 
-def rainbow(wait_ms=20, iterations=1):
-    """Draw rainbow that fades across all pixels at once."""
-    for j in range(256 * iterations):
-        for i in range(50):
-            pixels[i] = wheel((i + j) & 255)
-        pixels.commit()
-        pixels.sleep(wait_ms)
-
-def rainbow_cycle(wait_ms=20, iterations=5):
-    for j in range(256 * iterations):
-        for i in range(50):
-            pixels[i] = wheel(((i * 256 // 50) + j) & 255)
-        pixels.commit()
-        pixels.sleep(wait_ms)
-
-def theater_chase_rainbow(wait_ms=50):
-    for j in range(256):
-        for q in range(3):
-            for i in range(0, 50, 3):
-                if i + q >= 50:
-                    continue
-                pixels[i + q] = wheel((i + j) & 255)
-            pixels.commit()
-            pixels.sleep(wait_ms)
-            for i in range(0, 50, 3):
-                if i + q >= 50:
-                    continue
-                pixels[i + q] = 0
-
-def crazy(wait_ms=20, iterations=1):
-    """Draw rainbow that fades across all pixels at once."""
-    for j in range(256 * iterations):
-        for i in range(50):
-            pixels[i] = wheel(random.randint(0, 255))
-        pixels.commit()
-        pixels.sleep(wait_ms)
+pixels = neopixel.NeoPixel(PIXEL_NUM, path)
 
 
-def theater_chase(color, wait_ms=50, iterations=10):
-    """Movie theater light style chaser animation."""
-    for j in range(iterations):
-        for q in range(3):
-            for i in range(0, 50, 3):
-                if i + q >= 50:
-                    continue
-                pixels[i + q] = color
-            pixels.commit()
-            pixels.sleep(wait_ms)
-            for i in range(0, 50, 3):
-                if i + q >= 50:
-                    continue
-                pixels[i + q] = color
-
-try: 
-    for i in range(1):
-        # print ('Color wipe animations.')
-        # pixels.fill((255, 0, 0))
-        # pixels.commit()
-        # pixels.sleep(1)
-        # pixels.fill((0, 255, 0))
-        # pixels.commit()
-        # pixels.sleep(1)
-        print ('Theater chase animations.')
-        theater_chase((127, 127, 127))
-        theater_chase((127, 0, 0))
-        theater_chase((0, 0, 127))
-        print ('Rainbow animations.')
-        rainbow()
-        rainbow_cycle()
-        theater_chase_rainbow()
-        print ('Crazy animation.')
-        crazy(wait_ms=20, iterations=10)
+# Exemplu animatie
+# Inlocuieste codul din try-except cu propiul tau algoritm
+try:
+    # Facem toate becurile Red = 30, Green = 12, Blue = 200
+    # fill face si commit, asa ca nu e nevoie sa facem inca o data
+    pixels.fill((30, 12, 200))
+    # Dormim 500 ms ca sa ne bucuram de (30, 12, 200)
+    pixels.sleep(500)
+    # Schimbam culoarea primului pixel si facem commit pentru a activa modificarea
+    pixels[0] = (127, 127, 127)
+    pixels.commit()
+    pixels.sleep(200)
 
 except KeyboardInterrupt:
     pixels.fill((0, 0, 0))
     pixels.commit()
 
+# La final se face push pentru a se arhiva datele si a se scrie in fisierul out
 pixels.push()
