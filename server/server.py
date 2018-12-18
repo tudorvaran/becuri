@@ -17,10 +17,10 @@ import board
 
 comm_sem = threading.Semaphore()
 comm = {
-    'running': True,
-    'shutdown': False,
-    'update': False,
-    'playing': '',
+    'running': True,                # Tells the controller if it should run
+    'shutdown': False,              # Tells the controller to shutdown
+    'update': False,                # Tells the controller to refresh the animation list
+    'playing': '',                  # Who plays what
     'test': {
         'testing': False,
         'username': '',
@@ -61,7 +61,7 @@ class Controller(threading.Thread):
             self.conf = comm.copy()
             comm_sem.release()
 
-            # Check if we should show anything
+            # Are we running?
             if not self.conf['running']:
                 time.sleep(1)
                 continue
@@ -71,16 +71,20 @@ class Controller(threading.Thread):
                 self.anim_shutdown()
                 return
 
+            # Check if we need to update the animation list
             if self.conf['update']:
                 self.refresh_animation_list()
                 comm_sem.acquire()
                 comm['update'] = False
                 comm_sem.release()
 
+            # We use the filename to check if we test because we would basically init everytime we would pass here
             if self.conf['test']['filename'] != '':
                 # Load test file
-                self.test_data = zlib.decompress(open(os.path.join(os.getcwd(), 'temp', self.conf['test']['filename']), 'rb').read())
+                test_path = os.path.join(os.getcwd(), 'temp', self.conf['test']['filename'])
+                self.test_data = zlib.decompress(open(test_path, 'rb').read())
                 self.test_offset = 0
+                os.remove(test_path)
                 comm_sem.acquire()
                 comm['test']['testing'] = True
                 comm['test']['filename'] = ''
@@ -102,20 +106,39 @@ class Controller(threading.Thread):
         comm_sem.release()
 
     def load_new_animation(self):
-        print(self.anim_index)
+        global comm
+        # Redundancy
+        comm_sem.acquire()
+        need_update = comm['update']
+        comm_sem.release()
+        if need_update:
+            self.refresh_animation_list(redundant=True)
+            comm_sem.acquire()
+            comm['update'] = False
+            comm_sem.release()
+
+        # Load animation data
         self.anim_data = zlib.decompress(open(os.path.join(os.getcwd(), 'animations', self.anims[self.anim_index]), 'rb').read())
+        print('Loading %s' % self.anims[self.anim_index])
         self.anim_offset = 0
         self.anim_time_remaining = 180.0
-        self.update_now_playing()
 
-    def refresh_animation_list(self):
+        # Update now playing
+        pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
+        p = pattern.findall(self.anims[self.anim_index])[0]
+        comm_sem.acquire()
+        comm['playing'] = '%s by %s' % (p[2], p[0])
+        comm_sem.release()
+
+    def refresh_animation_list(self, redundant=False):
         dpath = os.path.join(os.getcwd(), 'animations')
         self.anims = [f for f in os.listdir(dpath) if os.path.isfile(os.path.join(dpath, f))]
         if len(self.anims) == 0:
             raise IndexError
         random.shuffle(self.anims)
         self.anim_index = 0
-        self.load_new_animation()
+        if not redundant:
+            self.load_new_animation()
 
     def run_main_animation(self):
         start = time.time()
@@ -142,6 +165,13 @@ class Controller(threading.Thread):
                 self.anim_index = 0
             self.load_new_animation()
 
+    def exit_testing(self):
+        global comm
+        comm_sem.acquire()
+        comm['test']['testing'] = False
+        comm_sem.release()
+
+
     def run_test_animation(self):
         start = time.time()
         global comm
@@ -150,20 +180,14 @@ class Controller(threading.Thread):
             self.update_lights(self.test_data, self.test_offset)
             self.test_offset += 4
             if self.test_offset >= len(self.test_data):
-                # TODO: add exit animation
-                comm_sem.acquire()
-                comm['test']['testing'] = False
-                comm_sem.release()
-                return
+                return self.exit_testing()
         print("Done test animation")
         delta = time.time() - start
         print(delta, self.test_time_remaining)
         if delta < self.test_time_remaining:
             self.test_time_remaining -= delta
         else:
-            comm_sem.acquire()
-            comm['test']['testing'] = False
-            comm_sem.release()
+            self.exit_testing()
 
     def update_lights(self, data, offset):
         bdata = struct.unpack_from('>I', data, offset)[0]
@@ -327,10 +351,12 @@ class Site(object):
                 break
         os.remove(os.path.join(os.getcwd(), 'animations', name))
         self.update_files()
+
         global comm
         comm_sem.acquire()
         comm['update'] = True
         comm_sem.release()
+
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
     def writefile(self, file, out_dir, animname):
@@ -355,6 +381,8 @@ class Site(object):
 
     @cherrypy.expose
     def uploadfile(self, name, file, mode):
+        global comm
+
         if cherrypy.request.login is None:
             raise cherrypy.HTTPError(status=403, message='Authenticate first!')
         if len(name) == 0:
@@ -362,17 +390,19 @@ class Site(object):
         for c in name:
             if c not in '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ':
                 return 'Only alphanumeric and space characters are accepted in parameter name'
+
         if mode == 'test':
-            global comm
             comm_sem.acquire()
-            if comm['test']['testing']:
-                return '%s is testing right now...' % comm['test']['username']
+            somebody_testing = comm['test']['testing']
             comm_sem.release()
-            fn = self.writefile(file, 'temp', '')
+            if somebody_testing:
+                return '%s is testing right now...' % comm['test']['username']
+
+            filename = self.writefile(file, 'temp', '')
+
             comm_sem.acquire()
-            comm['test']['testing'] = True
             comm['test']['username'] = cherrypy.request.login
-            comm['test']['filename'] = fn
+            comm['test']['filename'] = filename
             comm_sem.release()
         elif mode == 'animation':
             if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
