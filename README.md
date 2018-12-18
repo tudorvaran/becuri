@@ -4,6 +4,6 @@ Pe om, http://192.168.50.172:8080 (pentru moment)
 Pentru parola dati un PM
 
 # Cum generam animatii
-Folosind generate.py, evident
+Folosind generator.py, evident
 
-Cititi README din generate.py inainte de a pune intrebari
+Cititi README din generator.py inainte de a pune intrebari
