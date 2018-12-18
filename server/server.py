@@ -391,6 +391,12 @@ class Site(object):
                 break # TODO: implement error handling
             if not d:
                 break
+        # Check if valid zlib
+        try:
+            zlib.decompress(data)
+        except:
+            return ''
+
         filename = '%s-%s' % (cherrypy.request.login, hashlib.md5(data).hexdigest())
         path = os.path.join(os.getcwd(), out_dir, filename)
         if animname != '':
@@ -411,6 +417,8 @@ class Site(object):
         for c in name:
             if c not in '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ':
                 return 'Only alphanumeric and space characters are accepted in parameter name'
+        if file.file == None:
+            return 'Invalid file!'
 
         if mode == 'test':
             somebody_testing = False
@@ -422,6 +430,8 @@ class Site(object):
                 return '%s is testing right now...' % comm['test']['username']
 
             filename = self.writefile(file, 'temp', '')
+            if filename == '':
+                return 'Invalid file!'
 
             comm_sem.acquire()
             comm['test']['username'] = cherrypy.request.login
@@ -435,8 +445,7 @@ class Site(object):
             comm['update'] = True
             comm_sem.release()
         else:
-            # TODO: error message
-            return
+            return "Invalid mode!"
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
 if __name__ == "__main__":
