@@ -145,7 +145,7 @@ class Controller(threading.Thread):
 
     def run_main_animation(self):
         start = time.time()
-        print('Running main animation')
+        # print('Running main animation')
         for i in range(100):
             self.update_lights(self.anim_data, self.anim_offset)
             self.anim_offset += 4
@@ -156,9 +156,9 @@ class Controller(threading.Thread):
                     self.anim_index = 0
                 self.load_new_animation()
                 return
-        print("Done main animation")
+        # print("Done main animation")
         delta = time.time() - start
-        print(delta, self.anim_time_remaining)
+        # print(delta, self.anim_time_remaining)
         if delta < self.anim_time_remaining:
             self.anim_time_remaining -= delta
         else:
@@ -179,15 +179,15 @@ class Controller(threading.Thread):
     def run_test_animation(self):
         start = time.time()
         global comm
-        print("Running test animation")
+        # print("Running test animation")
         for i in range(100):
             self.update_lights(self.test_data, self.test_offset)
             self.test_offset += 4
             if self.test_offset >= len(self.test_data):
                 return self.exit_testing()
-        print("Done test animation")
+        # print("Done test animation")
         delta = time.time() - start
-        print(delta, self.test_time_remaining)
+        # print(delta, self.test_time_remaining)
         if delta < self.test_time_remaining:
             self.test_time_remaining -= delta
         else:
