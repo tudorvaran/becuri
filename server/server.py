@@ -16,6 +16,9 @@ from cherrypy.lib import auth_digest
 import neopixel
 import board
 
+log_sem = threading.Semaphore()
+log_path = os.path.join(os.getcwd(), 'server.log')
+
 comm_sem = threading.Semaphore()
 comm = {
     'running': True,                # Tells the controller if it should run
@@ -88,8 +91,10 @@ class Controller(threading.Thread):
                 self.test_time_remaining = 40.0
                 os.remove(test_path)
                 comm_sem.acquire()
+                username = comm['test']['username']
                 comm['test']['testing'] = True
                 comm['test']['filename'] = ''
+                self.log_to_file('Now testing %s\'s animation' % username)
                 self.conf = comm.copy()
                 comm_sem.release()
                 self.anim_test_start()
@@ -98,6 +103,13 @@ class Controller(threading.Thread):
                 self.run_test_animation()
             else:
                 self.run_main_animation()
+
+    def log_to_file(self, s):
+        buf = s + '\n'
+        log_sem.acquire()
+        with open(log_path, 'a') as fd:
+            fd.write(buf)
+        log_sem.release()
 
     def update_now_playing(self):
         pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
@@ -129,6 +141,7 @@ class Controller(threading.Thread):
         # Update now playing
         pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
         p = pattern.findall(self.anims[self.anim_index])[0]
+        self.log_to_file('Now playing "%s" by %s' % (p[2], p[0]))
         comm_sem.acquire()
         comm['playing'] = '%s by %s' % (p[2], p[0])
         comm_sem.release()
@@ -172,8 +185,10 @@ class Controller(threading.Thread):
         global comm
         comm_sem.acquire()
         comm['test']['testing'] = False
+        username = comm['test']['username']
         comm_sem.release()
         self.anim_test_stop()
+        self.log_to_file('%s test animation done' % username)
 
 
     def run_test_animation(self):
@@ -356,6 +371,8 @@ class Site(object):
             <input type="hidden" name="mode" value="test" />
             <button type="submit">Submit</button>
         </form>
+        <p>Log:</p>
+        <iframe src="log" height="600" width="500"></iframe>
     </body>
 </html>
 """
@@ -369,6 +386,7 @@ class Site(object):
         for f in self.files[cherrypy.request.login]:
             if f[0] == md5:
                 name = '%s-%s-%s' % (cherrypy.request.login, f[0], f[1])
+                self.log_to_file('%s deleted an animation: %s' % (cherrypy.request.login, f[1]))
                 break
         os.remove(os.path.join(os.getcwd(), 'animations', name))
         self.update_files()
@@ -379,6 +397,13 @@ class Site(object):
         comm_sem.release()
 
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
+
+    def log_to_file(self, s):
+        buf = s + '\n'
+        log_sem.acquire()
+        with open(log_path, 'a') as fd:
+            fd.write(buf)
+        log_sem.release()
 
     def writefile(self, file, out_dir, animname):
         data = b''
@@ -405,6 +430,19 @@ class Site(object):
             out.write(data)
         self.update_files()
         return filename
+
+    @cherrypy.expose
+    def log(self):
+        log_sem.acquire()
+        with open(log_path, 'r') as fd:
+            log_lines = fd.readlines()
+        log_sem.release()
+
+        buf = ''
+        buf += '<pre>'
+        buf += ''.join(reversed(log_lines))
+        buf += '</pre>'
+        return buf
 
     @cherrypy.expose
     def uploadfile(self, name, file, mode):
@@ -441,6 +479,7 @@ class Site(object):
             if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
                 return "Maximum of 3 files can be updated"
             self.writefile(file, 'animations', name[:20])
+            self.log_to_file('%s added a new animation: %s' % (cherrypy.request.login, name[:20]))
             comm_sem.acquire()
             comm['update'] = True
             comm_sem.release()
@@ -456,10 +495,6 @@ if __name__ == "__main__":
             'server.socket_host': '0.0.0.0',
             'server.socket_port': 8080,
             'server.thread_pool': 8
-        },
-        '/log': {
-            'tools.staticfile.on': True,
-            'tools.staticfile.filename': os.path.join(os.getcwd(), 'server.log')
         },
         '/': {
             'tools.auth_digest.on': True,
