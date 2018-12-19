@@ -482,8 +482,12 @@ class Site(object):
             comm['test']['filename'] = filename
             comm_sem.release()
         elif mode == 'animation':
-            if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
-                return "Maximum of 3 files can be updated"
+            if cherrypy.request.login == 'tvaran':
+                if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 5:
+                    return "Maximum of 5 files can be updated"
+            else:
+                if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
+                    return "Maximum of 3 files can be updated"
             self.writefile(file, 'animations', name[:20])
             self.log_to_file('%s added a new animation: %s' % (cherrypy.request.login, name[:20]))
             comm_sem.acquire()
