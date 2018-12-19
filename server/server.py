@@ -19,12 +19,14 @@ import board
 log_sem = threading.Semaphore()
 log_path = os.path.join(os.getcwd(), 'server.log')
 
+status_sem = threading.Semaphore()
+status = ''
+
 comm_sem = threading.Semaphore()
 comm = {
     'running': True,                # Tells the controller if it should run
     'shutdown': False,              # Tells the controller to shutdown
     'update': False,                # Tells the controller to refresh the animation list
-    'playing': '',                  # Who plays what
     'test': {
         'testing': False,
         'username': '',
@@ -50,6 +52,7 @@ class Controller(threading.Thread):
         self.test_data = b''
         self.test_offset = 0
         self.test_time_remaining = 40.0
+        self.save_status = ''
 
         # Other variables
         self.conf = None
@@ -89,14 +92,23 @@ class Controller(threading.Thread):
                 self.test_data = zlib.decompress(open(test_path, 'rb').read())
                 self.test_offset = 0
                 self.test_time_remaining = 40.0
+
                 os.remove(test_path)
+
                 comm_sem.acquire()
                 username = comm['test']['username']
                 comm['test']['testing'] = True
                 comm['test']['filename'] = ''
-                self.log_to_file('Now testing %s\'s animation' % username)
                 self.conf = comm.copy()
                 comm_sem.release()
+
+                self.log_to_file('Now testing %s\'s animation' % username)
+                global status
+                status_sem.acquire()
+                self.save_status = status
+                status = 'Now testing: %s' % username
+                status_sem.release()
+
                 self.anim_test_start()
             
             if self.conf['test']['testing']:
@@ -110,15 +122,6 @@ class Controller(threading.Thread):
         with open(log_path, 'a') as fd:
             fd.write(buf)
         log_sem.release()
-
-    def update_now_playing(self):
-        pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
-        p = pattern.findall(self.anims[self.anim_index])[0]
-        comm_sem.acquire()
-        global comm
-        print('%s by %s' % (p[2], p[0]))
-        comm['playing'] = '%s by %s' % (p[2], p[0])
-        comm_sem.release()
 
     def load_new_animation(self):
         global comm
@@ -142,9 +145,11 @@ class Controller(threading.Thread):
         pattern = re.compile('([a-z]+)-([a-z0-9]+)-([a-zA-Z0-9 ]+)')
         p = pattern.findall(self.anims[self.anim_index])[0]
         self.log_to_file('Now playing "%s" by %s' % (p[2], p[0]))
-        comm_sem.acquire()
-        comm['playing'] = '%s by %s' % (p[2], p[0])
-        comm_sem.release()
+
+        status_sem.acquire()
+        global status
+        status = 'Now playing: "%s" by %s' % (p[2], p[0])
+        status_sem.release()
 
     def refresh_animation_list(self, redundant=False):
         dpath = os.path.join(os.getcwd(), 'animations')
@@ -189,6 +194,10 @@ class Controller(threading.Thread):
         comm_sem.release()
         self.anim_test_stop()
         self.log_to_file('%s test animation done' % username)
+        status_sem.acquire()
+        global status
+        status = self.save_status
+        status_sem.release()
 
 
     def run_test_animation(self):
@@ -307,12 +316,9 @@ class Site(object):
 
     @cherrypy.expose
     def index(self):
-        comm_sem.acquire()
-        if comm['test']['testing']:
-            np = 'TEST ANIMATION by %s' % comm['test']['username']
-        else:
-            np = comm['playing']
-        comm_sem.release()
+        status_sem.acquire()
+        np = status
+        status_sem.release()
         body = """
 <!DOCTYPE html>
 <html>
@@ -331,7 +337,7 @@ class Site(object):
     <body>
 """
         body += """
-        <p>Now playing: {0}</p>
+        <p>{0}</p>
 """.format(np)
         body += """
         <table style="width:50%">
