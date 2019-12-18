@@ -242,32 +242,33 @@ class Controller(threading.Thread):
     # ANIMATIONS #
     ##############
     def anim_startup(self):
-        def pushpx(i):
-            self.pixels.fill((0, 0, 0))
-            for j in range(i):
-                self.pixels[j] = (0, 255, 0)
-            self.pixels.show()
-            time.sleep(0.02)
+        self.pixels.fill((0, 0, 0))
+
         for i in range(self.npx):
-            pushpx(i)
+            self.pixels[i] = (0, 255, 0)
+            self.pixels.show()
+            time.sleep(0.01)
         for i in range(self.npx, 0, -1):
-            pushpx(i)
+            self.pixels[i] = (0, 0, 0)
+            self.pixels.show()
+            time.sleep(0.01)
+
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
 
     def anim_shutdown(self):
         self.pixels.fill((255, 0, 0))
         self.pixels.show()
-        time.sleep(0.5)
+        time.sleep(0.2)
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
-        time.sleep(0.5)
+        time.sleep(0.2)
         self.pixels.fill((255, 0, 0))
         self.pixels.show()
-        time.sleep(0.5)
+        time.sleep(0.2)
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
-        time.sleep(0.5)
+        time.sleep(0.2)
         self.pixels.fill((255, 0, 0))
         self.pixels.show()
         time.sleep(1)
