@@ -497,6 +497,7 @@ def exit_gracefully(signum, frame):
     comm['shutdown'] = True
     comm_sem.release()
     print('Shutting down...')
+    cherrypy.engine.exit()
 
 
 if __name__ == "__main__":
