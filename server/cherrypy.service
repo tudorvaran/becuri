@@ -1,6 +1,5 @@
 [Unit]
 Description=Cherrypy Web Server
-KillSignal=SIGINT
 [Service]
 Type=simple
 WorkingDirectory=/home/pi/becuri/server/
