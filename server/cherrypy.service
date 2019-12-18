@@ -1,0 +1,10 @@
+[Unit]
+Description=Cherrypy Web Server
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/becuri/server/
+ExecStart=/home/pi/becuri/server/server.py
+
+[Install]
+WantedBy=multi-user.target

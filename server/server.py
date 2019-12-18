@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/pi/becuri/server/venv/bin/python
 import cherrypy
 import hashlib
 import json
@@ -12,7 +12,7 @@ import time
 import zlib
 
 from cherrypy.lib import auth_digest
-from cherrypy.process.plugins import Daemonizer
+
 import neopixel
 import board
 
@@ -294,8 +294,6 @@ class Controller(threading.Thread):
 
 class Site(object):
     def __init__(self):
-        ctrl = Controller()
-        ctrl.start()
         self.files = {}
 
         self.update_files()
@@ -506,15 +504,10 @@ if __name__ == "__main__":
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
     }
-
     try:
-        d = Daemonizer(cherrypy.engine)
-        d.subscribe()
-        #ctrl = Controller()
-        #ctrl.start()
-        cherrypy.tree.mount(Site(), '/', config=config)
-        cherrypy.engine.start()
-        cherrypy.engine.block()
+        ctrl = Controller()
+        ctrl.start()
+        cherrypy.quickstart(Site(), '/', config)
     except KeyboardInterrupt:
         print('Received Keyboard Interrupt')
         comm_sem.acquire()
