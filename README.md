@@ -1,9 +1,3 @@
-# Acces
-Pe om, http://192.168.50.172:8080 (pentru moment)
+# Access
 
-Pentru parola dati un PM
-
-# Cum generam animatii
-Folosind generator.py, evident
-
-Cititi README din generator.py inainte de a pune intrebari
+http://tv3-2.local:8080
