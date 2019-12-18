@@ -506,11 +506,11 @@ if __name__ == "__main__":
     }
 
     try:
-        d = Daemonizer(cherrypy.engine)
-        d.subscribe()
         ctrl = Controller()
         ctrl.start()
         cherrypy.quickstart(Site(), '/', config)
+        d = Daemonizer(cherrypy.engine)
+        d.subscribe()
     except KeyboardInterrupt:
         print('Received Keyboard Interrupt')
         comm_sem.acquire()
