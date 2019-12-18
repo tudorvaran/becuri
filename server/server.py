@@ -294,6 +294,8 @@ class Controller(threading.Thread):
 
 class Site(object):
     def __init__(self):
+        ctrl = Controller()
+        ctrl.start()
         self.files = {}
 
         self.update_files()
@@ -506,11 +508,14 @@ if __name__ == "__main__":
     }
 
     try:
-        ctrl = Controller()
-        ctrl.start()
-        cherrypy.quickstart(Site(), '/', config)
         d = Daemonizer(cherrypy.engine)
         d.subscribe()
+        #ctrl = Controller()
+        #ctrl.start()
+        cherrypy.config.update(config)
+        cherrypy.tree.mount(Site, '/')
+        cherrypy.engine.start()
+        cherrypy.engine.block()
     except KeyboardInterrupt:
         print('Received Keyboard Interrupt')
         comm_sem.acquire()
