@@ -512,8 +512,7 @@ if __name__ == "__main__":
         d.subscribe()
         #ctrl = Controller()
         #ctrl.start()
-        cherrypy.config.update(config)
-        cherrypy.tree.mount(Site, '/')
+        cherrypy.tree.mount(Site, '/', config=config)
         cherrypy.engine.start()
         cherrypy.engine.block()
     except KeyboardInterrupt:
