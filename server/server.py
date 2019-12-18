@@ -12,7 +12,7 @@ import time
 import zlib
 
 from cherrypy.lib import auth_digest
-
+from cherrypy.process.plugins import Daemonizer
 import neopixel
 import board
 
@@ -504,7 +504,10 @@ if __name__ == "__main__":
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
     }
+
     try:
+        d = Daemonizer(cherrypy.engine)
+        d.subscribe()
         ctrl = Controller()
         ctrl.start()
         cherrypy.quickstart(Site(), '/', config)
