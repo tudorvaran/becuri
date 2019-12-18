@@ -37,7 +37,7 @@ comm = {
 class Controller(threading.Thread):
     def __init__(self):
         # Pixels variables
-        self.npx = 50
+        self.npx = 100
         self.pixels = neopixel.NeoPixel(board.D18, self.npx, brightness=1.0, auto_write=False, pixel_order=neopixel.RGB)
 
         # Main animations variables
@@ -343,7 +343,6 @@ class Site(object):
         <table style="width:50%">
             <tr>
                 <th>Name</th>
-                <th>MD5</th>
                 <th>Delete</th>
             </tr>
 """
@@ -352,7 +351,6 @@ class Site(object):
                 body += """
             <tr>
                 <th>{0}</th>
-                <th>{1}</th>
                 <th><form action="deleteanim" method="POST">
                     <input type="hidden" name="md5" value="{1}" />
                     <button type="submit">Delete</button>
@@ -482,12 +480,6 @@ class Site(object):
             comm['test']['filename'] = filename
             comm_sem.release()
         elif mode == 'animation':
-            if cherrypy.request.login == 'tvaran':
-                if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 5:
-                    return "Maximum of 5 files can be updated"
-            else:
-                if cherrypy.request.login in self.files and len(self.files[cherrypy.request.login]) >= 3:
-                    return "Maximum of 3 files can be updated"
             self.writefile(file, 'animations', name[:20])
             self.log_to_file('%s added a new animation: %s' % (cherrypy.request.login, name[:20]))
             comm_sem.acquire()
@@ -498,8 +490,6 @@ class Site(object):
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
 if __name__ == "__main__":
-    with open('credentials.secret', 'r') as fd:
-        credentials = json.load(fd)
     config = {
         'global': {
             'server.socket_host': '0.0.0.0',
@@ -509,7 +499,7 @@ if __name__ == "__main__":
         '/': {
             'tools.auth_digest.on': True,
             'tools.auth_digest.realm': 'Bradut',
-            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain(credentials),
+            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain({'sl': 'getin1'}),
             'tools.auth_digest.key': 'randomsecret',
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
