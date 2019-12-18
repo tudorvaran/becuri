@@ -243,13 +243,14 @@ class Controller(threading.Thread):
     ##############
     def anim_startup(self):
         self.pixels.fill((0, 0, 0))
+        self.pixels.show()
 
         for i in range(self.npx):
             self.pixels[i] = (0, 255, 0)
             self.pixels.show()
             time.sleep(0.01)
         for i in range(self.npx, 0, -1):
-            self.pixels[i] = (0, 0, 0)
+            self.pixels[i-1] = (0, 0, 0)
             self.pixels.show()
             time.sleep(0.01)
 
