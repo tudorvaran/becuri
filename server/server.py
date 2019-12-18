@@ -10,6 +10,7 @@ import struct
 import threading
 import time
 import zlib
+import signal
 
 from cherrypy.lib import auth_digest
 
@@ -489,7 +490,16 @@ class Site(object):
             return "Invalid mode!"
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
+
+def exit_gracefully(signum, frame):
+    comm_sem.acquire()
+    comm['shutdown'] = True
+    comm_sem.release()
+    print('Shutting down...')
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, exit_gracefully)
     config = {
         'global': {
             'server.socket_host': '0.0.0.0',
@@ -510,6 +520,4 @@ if __name__ == "__main__":
         cherrypy.quickstart(Site(), '/', config)
     except KeyboardInterrupt:
         print('Received Keyboard Interrupt')
-        comm_sem.acquire()
-        comm['shutdown'] = True
-        comm_sem.release()
+        exit_gracefully()
