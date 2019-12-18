@@ -492,6 +492,7 @@ class Site(object):
 
 
 def exit_gracefully(signum, frame):
+    global comm
     comm_sem.acquire()
     comm['shutdown'] = True
     comm_sem.release()
@@ -499,7 +500,7 @@ def exit_gracefully(signum, frame):
 
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGTERM, exit_gracefully)
+    signal.signal(signal.SIGINT, exit_gracefully)
     config = {
         'global': {
             'server.socket_host': '0.0.0.0',

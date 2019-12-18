@@ -4,6 +4,6 @@ Description=Cherrypy Web Server
 Type=simple
 WorkingDirectory=/home/pi/becuri/server/
 ExecStart=/home/pi/becuri/server/server.py
-
+KillSignal=SIGINT
 [Install]
 WantedBy=multi-user.target
