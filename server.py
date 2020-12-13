@@ -1,12 +1,9 @@
-#!/home/pi/becuri/server/venv/bin/python
+#!/home/pi/becuri2/venv/bin/python
 import cherrypy
 import hashlib
-import json
 import os
-import queue
 import random
 import re
-import struct
 import threading
 import time
 import zlib
@@ -16,6 +13,8 @@ from cherrypy.lib import auth_digest
 
 import neopixel
 import board
+
+from interpretor import NeoPixelInterpretor
 
 log_sem = threading.Semaphore()
 log_path = os.path.join(os.getcwd(), 'server.log')
@@ -32,8 +31,9 @@ comm = {
         'testing': False,
         'username': '',
         'filename': ''
-    }
+    },
 }
+
 
 class Controller(threading.Thread):
     def __init__(self):
@@ -55,12 +55,15 @@ class Controller(threading.Thread):
         self.test_time_remaining = 40.0
         self.save_status = ''
 
+        # Use interpretor v2
+        self.interpretor = NeoPixelInterpretor(self.pixels)
+
         # Other variables
         self.conf = None
         
         self.anim_startup()
 
-        threading.Thread.__init__(self)
+        super().__init__()
 
     def run(self):
         while True:
@@ -76,6 +79,7 @@ class Controller(threading.Thread):
 
             # Check if we should shutdown
             if self.conf['shutdown']:
+                self.interpretor.stop()
                 self.anim_shutdown()
                 return
 
@@ -90,9 +94,7 @@ class Controller(threading.Thread):
             if self.conf['test']['filename'] != '':
                 # Load test file
                 test_path = os.path.join(os.getcwd(), 'temp', self.conf['test']['filename'])
-                self.test_data = zlib.decompress(open(test_path, 'rb').read())
-                self.test_offset = 0
-                self.test_time_remaining = 40.0
+                data = zlib.decompress(open(test_path, 'rb').read())
 
                 os.remove(test_path)
 
@@ -111,11 +113,11 @@ class Controller(threading.Thread):
                 status_sem.release()
 
                 self.anim_test_start()
-            
-            if self.conf['test']['testing']:
-                self.run_test_animation()
-            else:
-                self.run_main_animation()
+                self.interpretor.run(data, test=True)
+                self.exit_testing()
+
+            self.load_new_animation()
+            self.interpretor.run(self.anim_data)
 
     def log_to_file(self, s):
         buf = s + '\n'
@@ -123,6 +125,9 @@ class Controller(threading.Thread):
         with open(log_path, 'a') as fd:
             fd.write(buf)
         log_sem.release()
+
+    def interrupt(self):
+        self.interpretor.stop()
 
     def load_new_animation(self):
         global comm
@@ -162,31 +167,6 @@ class Controller(threading.Thread):
         if not redundant:
             self.load_new_animation()
 
-    def run_main_animation(self):
-        start = time.time()
-        # print('Running main animation')
-        for i in range(100):
-            self.update_lights(self.anim_data, self.anim_offset)
-            self.anim_offset += 4
-            if self.anim_offset >= len(self.anim_data): # animation over
-                if self.anim_index < len(self.anims) - 1:
-                    self.anim_index += 1
-                else:
-                    self.anim_index = 0
-                self.load_new_animation()
-                return
-        # print("Done main animation")
-        delta = time.time() - start
-        # print(delta, self.anim_time_remaining)
-        if delta < self.anim_time_remaining:
-            self.anim_time_remaining -= delta
-        else:
-            if self.anim_index < len(self.anims) - 1:
-                self.anim_index += 1
-            else:
-                self.anim_index = 0
-            self.load_new_animation()
-
     def exit_testing(self):
         global comm
         comm_sem.acquire()
@@ -201,43 +181,6 @@ class Controller(threading.Thread):
         status_sem.release()
 
 
-    def run_test_animation(self):
-        start = time.time()
-        global comm
-        # print("Running test animation")
-        for i in range(100):
-            self.update_lights(self.test_data, self.test_offset)
-            self.test_offset += 4
-            if self.test_offset >= len(self.test_data):
-                return self.exit_testing()
-        # print("Done test animation")
-        delta = time.time() - start
-        # print(delta, self.test_time_remaining)
-        if delta < self.test_time_remaining:
-            self.test_time_remaining -= delta
-        else:
-            self.exit_testing()
-
-    def update_lights(self, data, offset):
-        bdata = struct.unpack_from('>I', data, offset)[0]
-        cmd = bdata >> 24
-        if bdata == 0xdeadbeef:
-            # print('commit')
-            self.pixels.show()
-        elif cmd == 0xd0:
-            # print('sleep')
-            time.sleep(1 if (bdata & 0xffffff) > 1000 else (bdata & 0xffffff) / 1000)
-        else:
-            r = bdata >> 16 & 0xff
-            g = bdata >> 8 & 0xff
-            b = bdata & 0xff
-            if cmd == 0xf0:
-                # print('pixels.fill((%d, %d, %d))' % (r, g, b))
-                self.pixels.fill((r, g, b))
-            elif cmd < self.npx:
-                # print('pixels[%d] = (%d, %d, %d)' % (cmd, r, g, b))
-                self.pixels[cmd] = (r, g, b)
-
     ##############
     # ANIMATIONS #
     ##############
@@ -248,40 +191,30 @@ class Controller(threading.Thread):
         for i in range(self.npx):
             self.pixels[i] = (0, 255, 0)
             self.pixels.show()
-            time.sleep(0.01)
+            time.sleep(0.5 / self.npx)
         for i in range(self.npx, 0, -1):
             self.pixels[i-1] = (0, 0, 0)
             self.pixels.show()
-            time.sleep(0.01)
+            time.sleep(0.5 / self.npx)
 
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
 
     def anim_shutdown(self):
-        self.pixels.fill((255, 0, 0))
-        self.pixels.show()
-        time.sleep(0.2)
-        self.pixels.fill((0, 0, 0))
-        self.pixels.show()
-        time.sleep(0.2)
-        self.pixels.fill((255, 0, 0))
-        self.pixels.show()
-        time.sleep(0.2)
-        self.pixels.fill((0, 0, 0))
-        self.pixels.show()
-        time.sleep(0.2)
-        self.pixels.fill((255, 0, 0))
-        self.pixels.show()
-        time.sleep(1)
-        self.pixels.fill((0, 0, 0))
-        self.pixels.show()
+        for _ in range(5):
+            self.pixels.fill((255, 0, 0))
+            self.pixels.show()
+            time.sleep(0.2)
+            self.pixels.fill((0, 0, 0))
+            self.pixels.show()
+            time.sleep(0.2)
 
     def anim_test_start(self):
         for i in range(self.npx):
             self.pixels.fill((0, 0, 0))
             self.pixels[i] = (0, 255, 0)
             self.pixels.show()
-            time.sleep(0.01)
+            time.sleep(0.25 / self.npx)
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
 
@@ -290,15 +223,15 @@ class Controller(threading.Thread):
             self.pixels.fill((0, 0, 0))
             self.pixels[i] = (255, 0, 0)
             self.pixels.show()
-            time.sleep(0.01)
+            time.sleep(0.25 / self.npx)
         self.pixels.fill((0, 0, 0))
         self.pixels.show()
 
 
 class Site(object):
-    def __init__(self):
+    def __init__(self, controller):
         self.files = {}
-
+        self.controller = controller
         self.update_files()
 
     def update_files(self):
@@ -481,6 +414,7 @@ class Site(object):
             comm_sem.acquire()
             comm['test']['username'] = cherrypy.request.login
             comm['test']['filename'] = filename
+            self.controller.interrupt()
             comm_sem.release()
         elif mode == 'animation':
             self.writefile(file, 'animations', name[:20])
@@ -493,11 +427,16 @@ class Site(object):
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
 
 
+controller = Controller()
+
+
 def exit_gracefully(signum, frame):
     global comm
+    global controller
     comm_sem.acquire()
     comm['shutdown'] = True
     comm_sem.release()
+    controller.interrupt()
     print('Shutting down...')
     cherrypy.engine.exit()
 
@@ -514,15 +453,13 @@ if __name__ == "__main__":
         '/': {
             'tools.auth_digest.on': True,
             'tools.auth_digest.realm': 'Bradut',
-            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain({'sl': 'getin1'}),
             'tools.auth_digest.key': 'randomsecret',
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
     }
     try:
-        ctrl = Controller()
-        ctrl.start()
-        cherrypy.quickstart(Site(), '/', config)
+        controller.start()
+        cherrypy.quickstart(Site(controller), '/', config)
     except KeyboardInterrupt:
         print('Received Keyboard Interrupt')
         exit_gracefully()

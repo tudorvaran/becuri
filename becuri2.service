@@ -1,0 +1,9 @@
+[Unit]
+Description=Xmas tree leds
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/becuri2/
+ExecStart=/home/pi/becuri2/server.py
+KillSignal=SIGINT
+[Install]
+WantedBy=multi-user.target

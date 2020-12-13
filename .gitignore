@@ -1,5 +1,4 @@
 *.pyc
-*.txt
 *.log
 .vscode/
 server/animations
@@ -8,3 +7,5 @@ server/neopixel.py
 server/board.py
 server/credentials.secret
 users.py
+programs/
+env/
