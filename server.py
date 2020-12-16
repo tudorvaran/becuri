@@ -8,9 +8,6 @@ import threading
 import time
 import zlib
 import signal
-
-from cherrypy.lib import auth_digest
-
 import neopixel
 import board
 

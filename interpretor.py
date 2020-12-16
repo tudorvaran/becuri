@@ -146,6 +146,9 @@ class NeoPixelInterpretor:
         return int(((o / 100) ** 1.25) * 255)
 
     def do(self, mock=False, verbose=False, test=False):
+        self.sect_pos = []
+        self.sleep_multipliers = []
+        self.state_stack = []
         tabs = ''
         start_time = time.time()
         crt = 0
