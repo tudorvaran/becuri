@@ -33,9 +33,10 @@ class NeoPixelInterpretor:
 
     def run(self, data, mock=False, verbose=False, test=False):
         self.go_sem.acquire()
-        self.sect_pos = [1]
-        self.sleep_multipliers = [1]
+        self.sect_pos = []
+        self.sleep_multipliers = []
         self.cmd = [[Opcodes.SECTION.value]]
+        self.original_color = [(0, 0, 0, 0) for _ in range(len(self.pixels))]
         self.stop_check = False
         self.build_cmd_q(data)
         self.go_sem.release()
@@ -146,9 +147,6 @@ class NeoPixelInterpretor:
         return int(((o / 100) ** 1.25) * 255)
 
     def do(self, mock=False, verbose=False, test=False):
-        self.sect_pos = []
-        self.sleep_multipliers = []
-        self.state_stack = []
         tabs = ''
         start_time = time.time()
         crt = 0
