@@ -323,10 +323,10 @@ class Site(object):
     @cherrypy.expose
     def deleteanim(self, md5):
         name = ''
-        for f in self.files[cherrypy.request.login]:
+        for f in self.files['test']:
             if f[0] == md5:
-                name = '%s-%s-%s' % (cherrypy.request.login, f[0], f[1])
-                self.log_to_file('%s deleted an animation: %s' % (cherrypy.request.login, f[1]))
+                name = '%s-%s-%s' % ('test', f[0], f[1])
+                self.log_to_file('%s deleted an animation: %s' % ('test', f[1]))
                 break
         os.remove(os.path.join(os.getcwd(), 'animations', name))
         self.update_files()
@@ -362,7 +362,7 @@ class Site(object):
         except:
             return ''
 
-        filename = '%s-%s' % (cherrypy.request.login, hashlib.md5(data).hexdigest())
+        filename = '%s-%s' % ('test', hashlib.md5(data).hexdigest())
         path = os.path.join(os.getcwd(), out_dir, filename)
         if animname != '':
             path += '-' + animname
@@ -410,13 +410,13 @@ class Site(object):
                 return 'Invalid file!'
 
             comm_sem.acquire()
-            comm['test']['username'] = cherrypy.request.login
+            comm['test']['username'] = 'test'
             comm['test']['filename'] = filename
             self.controller.interrupt()
             comm_sem.release()
         elif mode == 'animation':
             self.writefile(file, 'animations', name[:20])
-            self.log_to_file('%s added a new animation: %s' % (cherrypy.request.login, name[:20]))
+            self.log_to_file('%s added a new animation: %s' % ('test', name[:20]))
             comm_sem.acquire()
             comm['update'] = True
             comm_sem.release()
