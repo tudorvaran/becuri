@@ -453,6 +453,7 @@ if __name__ == "__main__":
         '/': {
             'tools.auth_digest.on': True,
             'tools.auth_digest.realm': 'Bradut',
+            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain({'test', 'test'}),
             'tools.auth_digest.key': 'randomsecret',
             'tools.auth_digest.accept_charset': 'UTF-8'
         },
