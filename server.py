@@ -243,11 +243,11 @@ class Site(object):
         for f in files:
             p = pattern.findall(f)[0]
             user = p[0]
-            if user not in self.files:
-                self.files[user] = []
+            if 'test' not in self.files:
+                self.files['test'] = []
             md5 = p[1]
             fname = p[2]
-            self.files[user].append((md5, fname))
+            self.files['test'].append((md5, fname))
         print(self.files)
 
     @cherrypy.expose
@@ -282,8 +282,8 @@ class Site(object):
                 <th>Delete</th>
             </tr>
 """
-        if cherrypy.request.login in self.files:
-            for f in self.files[cherrypy.request.login]:
+        if 'test' in self.files:
+            for f in self.files['test']:
                 body += """
             <tr>
                 <th>{0}</th>

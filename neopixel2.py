@@ -274,6 +274,7 @@ class Neopixel:
         if total_sleep == 0:
             self.warnings.add("Program time is zero!")
         print("Sequence length: ~{0} seconds.".format(total_sleep / 1000))
+        print("Hint: use -v argument to see compiled program")
         if total_sleep // 1000 > 180:
             self.warnings.add('Animations are capped at 3 mins, while yours exceeds that threshold')
         self.fd.write(zlib.compress(self.data, 9))
