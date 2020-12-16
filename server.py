@@ -114,6 +114,7 @@ class Controller(threading.Thread):
                 self.exit_testing()
 
             self.load_new_animation()
+            self.pixels.fill((0, 0, 0))
             self.interpretor.run(self.anim_data)
 
     def log_to_file(self, s):
