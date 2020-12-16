@@ -388,8 +388,6 @@ class Site(object):
     def uploadfile(self, name, file, mode):
         global comm
 
-        if cherrypy.request.login is None:
-            raise cherrypy.HTTPError(status=403, message='Authenticate first!')
         if len(name) == 0:
             return 'Parameter name cannot be empty'
         for c in name:
@@ -451,11 +449,6 @@ if __name__ == "__main__":
             'server.thread_pool': 8
         },
         '/': {
-            'tools.auth_digest.on': True,
-            'tools.auth_digest.realm': 'Bradut',
-            'tools.auth_digest.get_ha1': auth_digest.get_ha1_dict_plain({'test', 'test'}),
-            'tools.auth_digest.key': 'randomsecret',
-            'tools.auth_digest.accept_charset': 'UTF-8'
         },
     }
     try:
