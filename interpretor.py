@@ -97,12 +97,13 @@ class NeoPixelInterpretor:
         r = color >> 24
         g = (color >> 16) & 0xff
         b = (color >> 8) & 0xff
-        o = self.compute_brightness_multiplier(color & 0xff)
-        return r, g, b, o
+        l = color & 0xff
+        return r, g, b, l
 
     def c2p(self, color):
+        brightness = self.compute_brightness_multiplier(color[3])
         return tuple([
-            c * color[3] / 255 for c in color[:3]
+            c * brightness / 255 for c in color[:3]
         ])
 
     def run(self, data, mock=False, verbose=False, test=False):

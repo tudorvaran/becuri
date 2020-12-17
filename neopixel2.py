@@ -64,7 +64,7 @@ class Neopixel:
             if b < 0 or b > 255:
                 raise ValueError(f"Invalid color value {b} for index {index} in color. Range = [0, 255]")
         if color[3] < 0 or color[3] > 100:
-            raise ValueError(f"Invalid brightness value {color[3]}. Range = [0, 255]")
+            raise ValueError(f"Invalid brightness value {color[3]}. Range = [0, 100]")
 
         new_color = tuple(int(b) for b in color)
         if new_color != color:
