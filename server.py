@@ -53,7 +53,7 @@ class Controller(threading.Thread):
         self.save_status = ''
 
         # Use interpretor v2
-        self.interpretor = NeoPixelInterpretor(self.pixels)
+        self.interpretor = NeoPixelInterpretor(self.pixels, self.npx)
 
         # Other variables
         self.conf = None
