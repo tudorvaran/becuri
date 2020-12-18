@@ -295,7 +295,7 @@ class NeoPixelInterpretor:
                     self.tabs = self.tabs[:-1]
                     self._log(self.tabs, "===END=SET===")
 
-                for index, color in enumerate(cmd[1]):
+                for index, color in cmd[1]:
                     self.original_color[index] = color
                     if not mock:
                         self.pixels[index] = self.c2p(color)
