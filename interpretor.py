@@ -235,7 +235,8 @@ class NeoPixelInterpretor:
                             self._log(self.tabs, f"sleep({sleep_now})")
                     if not mock and sleep_now:
                         time.sleep(sleep_now)
-                        continue
+                        if cmdlist[crt][1] != cmdlist[crt][2]:
+                            continue
             elif cmd[0] == Opcodes.SHOW.value:
                 if not mock:
                     self.pixels.show()
@@ -317,10 +318,6 @@ class NeoPixelInterpretor:
                         self.pixels[index] = self.c2p(color)
             elif cmd[0] == Opcodes.SHOW_AND_SLEEP.value:
                 cmdlist[crt][0] = Opcodes.SLEEP.value
-                if not mock:
-                    self.pixels.show()
-                if verbose:
-                    self._log(self.tabs, f"show(sleep)")
                 continue
             elif cmd[0] == Opcodes.RESET_SPEED.value:
                 self.sleep_multipliers[-1] = 1
