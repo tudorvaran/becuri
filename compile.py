@@ -17,11 +17,12 @@ def main(filename, verbose=False):
         tree_module = import_module(f"programs.{filename}")
         found_module = True
         tree_module.main(pixels)
+    except KeyboardInterrupt:
+        pixels.fill((0, 0, 0))
     except ModuleNotFoundError as e:
         print(f"Python program module {filename} does not exist!")
     finally:
         if found_module:
-            pixels.fill((0, 0, 0))
             pixels.save()
 
 

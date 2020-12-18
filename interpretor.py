@@ -295,10 +295,10 @@ class NeoPixelInterpretor:
                     self.tabs = self.tabs[:-1]
                     self._log(self.tabs, "===END=SET===")
 
-                for index, color in cmd[1]:
+                for index, color in enumerate(cmd[1]):
                     self.original_color[index] = color
                     if not mock:
-                        self.pixels[index] = self.c2p(self.original_color)
+                        self.pixels[index] = self.c2p(color)
             elif cmd[0] == Opcodes.SHOW_AND_SLEEP.value:
                 cmdlist[crt][0] = Opcodes.SLEEP.value
                 if not mock:

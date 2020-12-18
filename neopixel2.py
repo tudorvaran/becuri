@@ -55,12 +55,12 @@ class Neopixel:
             raise TypeError("Slices are not accepted")
         self.__validate_index(key)
         value = self.__process_color(value)
-        self._w(Opcodes.SET, int.to_bytes(key, 1, byteorder='big'), self._rgb_to_bytes(value))
+        self._w(Opcodes.SET, int.to_bytes(key, 1, byteorder='big'), self._rgbl_to_bytes(value))
 
     def __getitem__(self, index):
         return self.interpretor.original_color[index]
 
-    def _rgb_to_bytes(self, color):
+    def _rgbl_to_bytes(self, color):
         for index, b in enumerate(color[:3]):
             if b < 0 or b > 255:
                 raise ValueError(f"Invalid color value {b} for index {index} in color. Range = [0, 255]")
@@ -77,7 +77,7 @@ class Neopixel:
         buffer = b''
         for d in data:
             if isinstance(d, tuple):
-                buffer += self._rgb_to_bytes(d)
+                buffer += self._rgbl_to_bytes(d)
             elif isinstance(d, Opcodes):
                 buffer += d.value.to_bytes(1, byteorder='big')
             else:
@@ -162,7 +162,7 @@ class Neopixel:
     def _process_set_pixel(self, index, value):
         return [
             int.to_bytes(index, 1, byteorder='big'),
-            self._rgb_to_bytes(value)
+            self._rgbl_to_bytes(value)
         ]
 
     def _write_move_operation(self, opcode, spaces, lower_bound, upper_bound, trail, rotate, occupy):
