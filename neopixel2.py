@@ -1,6 +1,7 @@
 import math
 import os
 import zlib
+from contextlib import contextmanager
 
 from opcodes import Opcodes
 from interpretor import NeoPixelInterpretor
@@ -139,6 +140,12 @@ class Neopixel:
         self.stack_sleep.append(0)
         self._w(Opcodes.SECTION)
 
+    @contextmanager
+    def section_repeat(self, times=1):
+        self.section()
+        yield
+        self.repeat(times)
+
     def _merge_sleep_time(self, times):
         if len(self.stack_sleep) > 1:
             top_stack_time = self.stack_sleep.pop() * (times + 1)
@@ -151,6 +158,12 @@ class Neopixel:
             raise ValueError(f"Repeat times should be in interval [0, {0xffff}]")
         self._merge_sleep_time(times)
         self._w(Opcodes.REPEAT, int.to_bytes(times & 0xffff, 2, byteorder='big'))
+
+    def _process_set_pixel(self, index, value):
+        return [
+            int.to_bytes(index, 1, byteorder='big'),
+            self._rgb_to_bytes(value)
+        ]
 
     def _write_move_operation(self, opcode, spaces, lower_bound, upper_bound, trail, rotate, occupy):
         self._w(
@@ -187,15 +200,16 @@ class Neopixel:
         self.__validate_bounds(lower_bound, upper_bound, 0)
         gradient = self.build_gradient(colors, upper_bound + 1 - lower_bound)
 
+        gradient_buffer = []
+        for index in range(len(gradient)):
+            gradient_buffer += self._process_set_pixel(
+                lower_bound + index, gradient[index]
+            )
         self._w(
             Opcodes.SET_MULTIPLE,
-            int.to_bytes(len(gradient), 1, byteorder='big')
+            int.to_bytes(len(gradient), 1, byteorder='big'),
+            *gradient_buffer
         )
-        for index in range(len(gradient)):
-            self._w(
-                int.to_bytes(lower_bound + index, 1, byteorder='big'),
-                self._rgb_to_bytes(gradient[index])
-            )
 
     def build_gradient(self, colors, length):
         colors = list(map(self.__process_color, colors))
@@ -271,10 +285,11 @@ class Neopixel:
         total_sleep = sum(self.stack_sleep)
         if total_sleep == 0:
             self.warnings.add("Program time is zero!")
-        print("Sequence length: ~{0} seconds.".format(total_sleep / 1000))
+        sequence_time = f'{total_sleep // 60000}' + (f':{int(total_sleep / 1000 % 60)}' if int(total_sleep / 1000) % 60 > 0 else '')
+        print("Sequence length: approx. {0} minutes".format(sequence_time))
         print("Hint: use -v argument to see compiled program")
         if total_sleep // 1000 > 180:
-            self.warnings.add('Animations are capped at 3 mins, while yours exceeds that threshold')
+            self.warnings.add('Animation time exceeds 3 minutes')
         self.fd.write(zlib.compress(self.data, 9))
         self.fd.close()
         print("Compressed {0} bytes in {1} - final size: {2} bytes.".format(

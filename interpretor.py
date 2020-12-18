@@ -67,12 +67,15 @@ class NeoPixelInterpretor:
             Opcodes.SET_SPEED.value: opcode_with_float,
             Opcodes.RESET_SPEED.value: single_opcode,
 
-            Opcodes.SET_MULTIPLE.value: lambda args: ([
-                                                         args[0][args[1]],
-                                                         [(args[0][buf2], self._bytes_to_rgb(args[0][buf2 + 1:buf2 + 5]))
-                                                          for buf2 in range(2, 5 * args[0][args[1] + 1] + 2, 5)
-                                                          ]
-                                                     ], args[1] + args[0][args[1] + 1] * 5 + 2),
+            Opcodes.SET_MULTIPLE.value: lambda args: (
+                [
+                    args[0][args[1]],
+                    [
+                        (args[0][buf2], self._bytes_to_rgb(args[0][buf2 + 1:buf2 + 5]))
+                        for buf2 in range(2, 5 * args[0][args[1] + 1] + 2, 5)
+                    ]
+                ], args[1] + args[0][args[1] + 1] * 5 + 2
+            ),
             Opcodes.SET_BRIGHTNESS.value: lambda args: ([
                                                            args[0][args[1]],
                                                            args[0][args[1] + 1],

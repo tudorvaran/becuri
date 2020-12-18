@@ -11,15 +11,18 @@ NUM_PX = 100
 def main(filename, verbose=False):
     filepath = os.path.join("programs", f"{filename}.leds")
     pixels = Neopixel(NUM_PX, filepath, verbose)
+    found_module = False
 
     try:
         tree_module = import_module(f"programs.{filename}")
+        found_module = True
         tree_module.main(pixels)
-    except KeyboardInterrupt as e:
-        traceback.format_exc(e)
-        pixels.fill((0, 0, 0))
+    except ModuleNotFoundError as e:
+        print(f"Python program module {filename} does not exist!")
     finally:
-        pixels.save()
+        if found_module:
+            pixels.fill((0, 0, 0))
+            pixels.save()
 
 
 if len(sys.argv) < 2:
