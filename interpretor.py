@@ -34,6 +34,11 @@ class NeoPixelInterpretor:
                                              args[0][args[1]],
                                              int.from_bytes(args[0][args[1] + 1:args[1] + 3], 'big') / 1000
                                          ], args[1] + 3)
+        opcode_with_float_duplicate_value = lambda args: ([
+            args[0][args[1]],
+            int.from_bytes(args[0][args[1] + 1:args[1] + 3], 'big') / 1000,
+            int.from_bytes(args[0][args[1] + 1:args[1] + 3], 'big') / 1000
+        ], args[1] + 3)
 
         self.opcodes = {
             Opcodes.SET.value: lambda args: ([
@@ -47,13 +52,17 @@ class NeoPixelInterpretor:
                                                  self._bytes_to_rgb(args[0][args[1] + 1:args[1] + 5])
                                              ], args[1] + 5),
 
-            Opcodes.SLEEP.value: opcode_with_float,
+            Opcodes.SLEEP.value: opcode_with_float_duplicate_value,
             Opcodes.SHOW.value: single_opcode,
-            Opcodes.SHOW_AND_SLEEP.value: opcode_with_float,
+            Opcodes.SHOW_AND_SLEEP.value: lambda args: ([
+                [Opcodes.SHOW.value],
+                opcode_with_float_duplicate_value(args)[0],
+            ], args[1] + 3),
             Opcodes.SECTION.value: single_opcode,
             Opcodes.REPEAT.value: lambda args: ([
                                                    [
                                                        args[0][args[1]],
+                                                       int.from_bytes(args[0][args[1] + 1:args[1] + 3], 'big'),
                                                        int.from_bytes(args[0][args[1] + 1:args[1] + 3], 'big')
                                                    ],
                                                    [
@@ -114,6 +123,8 @@ class NeoPixelInterpretor:
         self.sect_pos = []
         self.sleep_multipliers = []
         self.original_color = [(0, 0, 0, 0) for _ in range(len(self.pixels))]
+        if verbose:
+            self.reset_verbose()
         self.stop_check = False
         cmdlist = self.build_cmd_q(data)
         self.go_sem.release()
@@ -151,11 +162,11 @@ class NeoPixelInterpretor:
         sleep_now = 0
         if sleep_value > 0:
             if sleep_value >= 1:
-                cmdlist[crt][1] -= 1
+                cmdlist[crt][1] -= self.sleep_multipliers[-1]
                 sleep_now = 1
             else:
                 sleep_now = cmd[1]
-                cmdlist[crt][1] = 0
+                cmdlist[crt][1] = cmdlist[crt][2]
         return sleep_now
 
     def compute_brightness_multiplier(self, o):
@@ -218,10 +229,13 @@ class NeoPixelInterpretor:
                 sleep_value = cmdlist[crt][1] * self.sleep_multipliers[-1]
                 if sleep_now:
                     if verbose:
-                        self._log(self.tabs, f"sleep({sleep_value + sleep_now})")
+                        if cmdlist[crt][1] != cmdlist[crt][2]:
+                            self._log(self.tabs, f"sleep({sleep_now + sleep_value})")
+                        else:
+                            self._log(self.tabs, f"sleep({sleep_now})")
                     if not mock and sleep_now:
                         time.sleep(sleep_now)
-                    continue
+                        continue
             elif cmd[0] == Opcodes.SHOW.value:
                 if not mock:
                     self.pixels.show()
@@ -286,6 +300,8 @@ class NeoPixelInterpretor:
                             self.pixels[index] = self.c2p(self.original_color[index])
                         self.sleep_multipliers[-1] = 1 if len(self.sleep_multipliers) == 1 else self.sleep_multipliers[-2]
                         continue
+                    else:
+                        cmdlist[crt][1] = cmdlist[crt][2]
             elif cmd[0] == Opcodes.SET_MULTIPLE.value:
                 if verbose:
                     self._log(self.tabs, "===SET===")
