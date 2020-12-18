@@ -23,7 +23,7 @@ comm_sem = threading.Semaphore()
 comm = {
     'running': True,                # Tells the controller if it should run
     'shutdown': False,              # Tells the controller to shutdown
-    'update': False,                # Tells the controller to refresh the animation list
+    'update': True,                # Tells the controller to refresh the animation list
     'test': {
         'testing': False,
         'username': '',
@@ -44,7 +44,6 @@ class Controller(threading.Thread):
         self.anim_data = b''
         self.anim_offset = 0
         self.anim_time_remaining = 180.0
-        self.refresh_animation_list()
 
         # Testing animations variables
         self.test_data = b''
@@ -130,7 +129,7 @@ class Controller(threading.Thread):
         global comm
         # Redundancy
         comm_sem.acquire()
-        need_update = comm['update']
+        need_update = self.anim_index == len(self.anims)
         comm_sem.release()
         if need_update:
             self.refresh_animation_list(redundant=True)
@@ -153,6 +152,7 @@ class Controller(threading.Thread):
         global status
         status = 'Now playing: "%s" by %s' % (p[2], p[0])
         status_sem.release()
+        self.anim_index += 1
 
     def refresh_animation_list(self, redundant=False):
         dpath = os.path.join(os.getcwd(), 'animations')
@@ -414,9 +414,6 @@ class Site(object):
         elif mode == 'animation':
             self.writefile(file, 'animations', name[:20])
             self.log_to_file('%s added a new animation: %s' % ('test', name[:20]))
-            comm_sem.acquire()
-            comm['update'] = True
-            comm_sem.release()
         else:
             return "Invalid mode!"
         raise cherrypy.HTTPRedirect('/') # TODO: update redirect target
