@@ -8,6 +8,7 @@ from opcodes import Opcodes
 class NeoPixelInterpretor:
     def __init__(self, pixels, num_px, test_time=40, runtime=180):
         self.stop_check = False
+        self.num_px = num_px
         self.go_sem = threading.Semaphore()
         self.sect_pos = []
         self.sleep_multipliers = []
@@ -252,7 +253,7 @@ class NeoPixelInterpretor:
 
                 for i in range(lb, ub + 1):
                     self.original_color[lb + i] = vector[i]
-                    if not mock:
+                    if not mock and 0 <= lb + i < self.num_px:
                         self.pixels[lb + i] = self.c2p(vector[i])
 
                 if not mock and show:
@@ -277,7 +278,7 @@ class NeoPixelInterpretor:
 
                 for i in range(lb, ub + 1):
                     self.original_color[lb + i] = vector[i]
-                    if not mock:
+                    if not mock and 0 <= lb + i < self.num_px:
                         self.pixels[lb + i] = self.c2p(vector[i])
 
                 if not mock and show:
