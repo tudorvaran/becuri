@@ -251,7 +251,7 @@ class NeoPixelInterpretor:
                     [vector[0] for _ in range(sp)] if trail else [(0, 0, 0, 0) for _ in range(sp)]
                 )) + vector[:-sp]
 
-                for i in range(lb, ub + 1):
+                for i in range(ub + 1 - lb):
                     self.original_color[lb + i] = vector[i]
                     if not mock and 0 <= lb + i < self.num_px:
                         self.pixels[lb + i] = self.c2p(vector[i])
@@ -276,9 +276,9 @@ class NeoPixelInterpretor:
                     )
                 )
 
-                for i in range(lb, ub + 1):
+                for i in range(ub + 1 - lb):
                     self.original_color[lb + i] = vector[i]
-                    if not mock and 0 <= lb + i < self.num_px:
+                    if not mock:
                         self.pixels[lb + i] = self.c2p(vector[i])
 
                 if not mock and show:

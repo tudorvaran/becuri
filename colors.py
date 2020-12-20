@@ -6,6 +6,7 @@ CYAN = (0, 255, 255)
 YELLOW = (255, 255, 0)
 INDIGO = (80, 0, 255)
 VIOLET = (255, 0, 255)
+BLACK = (0, 0, 0)
 
 BRIGHT = (100,)
 HALF = (50,)
